@@ -1,59 +1,57 @@
-# Contexte global : qu’est-ce que c’est que ce fichier ?
+# Global context: what is this file?
 
-C’est un **boot sector** (secteur d’amorçage) minimal en **assembleur x86 16-bit**.
+This is a minimal **boot sector** written in **16-bit x86 assembly**.
 
-Quand un PC “classique BIOS” démarre :
+When a “classic BIOS-based” PC starts:
 
-1. Le BIOS cherche un périphérique bootable (disque, clé USB…)
-2. Il **lit le tout premier secteur** (512 octets) du périphérique (LBA 0)
-3. Il copie ces 512 octets en RAM à l’adresse **0x0000:0x7C00** (souvent écrite “0x7C00”)
-4. Il saute à cette adresse et exécute le code en **mode réel** (real mode, 16-bit)
+1. The BIOS looks for a bootable device (disk, USB drive, etc.)
+2. It **reads the very first sector** (512 bytes) of the device (LBA 0)
+3. It copies these 512 bytes into RAM at address **0x0000:0x7C00** (often written simply as “0x7C00”)
+4. It jumps to this address and executes the code in **real mode** (16-bit real mode)
 
-Ce code permet d'afficher P.O.S à l’écran via le BIOS, puis boucle infinie.
+This code displays `P.O.S` on the screen using the BIOS, then enters an infinite loop.
 
-# Notions de base indispensables
+# Essential basic concepts
 
-## 1. Mode réel (16-bit)
+## 1. Real mode (16-bit)
 
-Au tout début, on est en **real mode** :
+At the very beginning, the CPU is in **real mode**:
 
-- registres **16 bits** (AX, BX, CX, DX, SP, BP, SI, DI)
-- adressage mémoire via **segment:offset**
-    - adresse physique = `segment * 16 + offset`
-    - ex : `0x0000:0x7C00` → `0x0000 * 16 + 0x7C00 = 0x7C00`
+- **16-bit registers** (AX, BX, CX, DX, SP, BP, SI, DI)
+- memory addressing using **segment:offset**
+    - physical address = `segment * 16 + offset`
+    - example : `0x0000:0x7C00` → `0x0000 * 16 + 0x7C00 = 0x7C00`
 
-## 2. Registres AH / AL et AX
+## 2. AH / AL and AX registers
 
-Dans x86 :
+In x86 :
 
-- `AX` est un registre 16-bit
-- il est découpé en deux registres 8-bit :
-    - `AH` = octet haut (bits 15..8)
-    - `AL` = octet bas (bits 7..0)
+- `AX` is a 16-bit register
+- it is split into two 8-bit registers:
+    - `AH` = high byte (bits 15..8)
+    - `AL` = low byte (bits 7..0)
 
-Donc :
+Therefore:
 
-- `mov ah, 0x0e` met 0x0E dans AH
-- `mov al, 'P'` met le code ASCII de P dans AL
+- `mov ah, 0x0e` puts 0x0E into AH
+- `mov al, 'P'` puts the ASCII code of P into AL
 
-Et AX vaut alors 0x0E?? (où ?? dépend de AL).
+## 3. BIOS interrupts (int 0x10)
 
-## 3. Interruptions BIOS (int 0x10)
+In real mode, BIOS services can be called using `int xx`.
 
-En mode réel, on peut appeler des services BIOS via `int xx`.
+`int 0x10` = **BIOS video services**.
 
-`int 0x10` = **services vidéo BIOS**.
+Setting `AH=0x0E` selects the **teletype output** function:
 
-Et `AH=0x0E` sélectionne la fonction **teletype output** :
+- displays the character in `AL`
+- advances the cursor
+- handles scrolling, etc.
 
-- affiche le caractère dans `AL`
-- avance le curseur
-- gère scrolling, etc.
-
-Donc le couple :
+So the sequence:
 
 - `mov ah, 0x0e`
 - `mov al, 'X'`
 - `int 0x10`
 
-=> affiche X.
+=> displays X.
