@@ -1,19 +1,11 @@
 # Minimal x86 Boot Sector (BIOS, 16-bit Real Mode)
 
 This project contains a **minimal x86 boot sector** written in **16-bit x86 assembly**, meant for learning.
-It shows how a BIOS loads and executes the first sector of a bootable device and how to print text using BIOS interrupts.
-
-The boot sector displays:
-
-```
-P.O.S
-```
-
-and then loops forever.
+It demonstrates how a BIOS loads and executes the first sector of a bootable device, how to print text using BIOS interrupts, and introduces fundamental system concepts like the Stack and memory addressing.
 
 ---
 
-## How BIOS booting works (classic PC)
+## Part 1: How BIOS booting works (classic PC)
 
 On a classic BIOS-based x86 system, the boot process is roughly:
 
@@ -26,7 +18,7 @@ A valid boot sector must end with the boot signature **0xAA55** (last 2 bytes). 
 
 ---
 
-## Core concepts
+## Part 2: Core concepts (the basics - v1)
 
 ### 1. Real mode (16-bit)
 
@@ -82,6 +74,68 @@ This prints `X`.
 
 ---
 
+## Part 3: Advanced concepts (The stack & functions - v2)
+
+This section covers the new theory introduced in `boot-v2.asm`, which allows for cleaner code using strings and subroutines.
+
+### 1. The stack (BP & SP)
+
+To use functions (subroutines), the CPU needs a place to remember "where to return to". This is the **Stack**. It operates on a LIFO basis (Last In, First Out).
+
+* **SP (Stack Pointer):** Points to the top of the stack
+* **BP (Base Pointer):** Used as a reference point for the stack frame
+
+In `boot-v2.asm`, we initialize the stack safely away from our code:
+
+```asm
+mov bp, 0x8000  ; Set the base of the stack to 0x8000
+mov sp, bp      ; Initialize the stack pointer (empty stack)
+```
+
+*Why 0x8000?* Our code is at `0x7C00`. The stack grows *downwards* (towards lower addresses). Placing it at `0x8000` ensures it doesn't overwrite our boot sector code.
+
+### 2. Pointers & Strings (BX)
+
+In C, you use pointers. In Assembly, we use registers like `BX` to hold memory addresses.
+
+* `mov bx, welcome_msg`: Loads the **address** of the string into BX
+* `mov al, [bx]`: Reads the **value** (character) at the address contained in BX
+
+We use **Null-Terminated Strings** (like in C). We define strings ending with `0`:
+
+```asm
+welcome_msg: db 'Welcome...', 0
+```
+
+The print loop continues until it sees a `0`.
+
+### 3. Functions (CALL & RET)
+
+* `call print_str`: Pushes the address of the next instruction onto the stack and jumps to `print_str`
+* `ret`: Pops the return address from the stack and jumps back to it
+
+We also use `pusha` and `popa` inside functions to save and restore all general-purpose registers, ensuring the function doesn't mess up the state of the main program.
+
+The memory map:
+
+0xFFFF  +------------------+
+        |                  |
+        | ...              |
+0x8000  +------------------+ <--- Base of the Stack (BP)
+        | STACK (Grows     |      (SP goes down on PUSH)
+        | downward)        |      (SP goes up on POP)
+        |                  |
+        v                  v
+        |                  |
+0x7E00  +------------------+ <--- Theoretical end of our sector (512 bytes)
+        | Boot Sector Code |
+        |                  |
+0x7C00  +------------------+ <--- Start of the code (ORG 0x7C00)
+        | ...              |
+0x0000  +------------------+
+
+---
+
 ## Setup (WSL / Ubuntu)
 
 These steps match a typical **WSL (Ubuntu)** setup.
@@ -114,12 +168,22 @@ qemu-system-i386 --version
 
 ---
 
-## Build (assemble)
+## Build
 
-This boot sector is assembled as a **flat binary** (raw 512-byte sector):
+The boot sector is assembled as a **flat binary** (raw 512-byte sector).
+
+### Build V1
 
 ```bash
-nasm -f bin boot.asm -o boot.bin
+nasm -f bin boot-v1.asm -o boot.bin
+
+```
+
+### Build V2
+
+```bash
+nasm -f bin boot-v2.asm -o boot.bin
+
 ```
 
 ---
@@ -135,17 +199,9 @@ qemu-system-i386 boot.bin
 You should see:
 
 ```
+Welcome on the OS better than Windows
 P.O.S
 ```
-
-printed on the emulated screen.
-
----
-
-## Notes / references
-
-* OSDev Wiki (excellent learning resource):
-  [https://wiki.osdev.org/Main_Page](https://wiki.osdev.org/Main_Page)
 
 ---
 
@@ -153,11 +209,15 @@ printed on the emulated screen.
 
 This project is intentionally minimal. It does **not**:
 
-* set up a stack
-* initialize segment registers
-* switch to protected mode or long mode
+* Switch to protected mode or long mode.
+* Load a kernel from disk (it just stays in the boot sector).
 
-It only demonstrates:
+It demonstrates:
 
-* BIOS boot sector structure (512 bytes + signature)
-* printing characters using BIOS `int 0x10` (AH = 0x0E)
+* BIOS boot sector structure (512 bytes + signature).
+* Printing characters using BIOS `int 0x10`.
+* (v2) Managing the stack and register pointers.
+
+## Notes / references
+
+* OSDev Wiki (excellent learning resource): [https://wiki.osdev.org/Main_Page](https://wiki.osdev.org/Main_Page)
