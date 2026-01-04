@@ -118,6 +118,7 @@ We also use `pusha` and `popa` inside functions to save and restore all general-
 
 The memory map:
 
+```markdown
 0xFFFF  +------------------+
         |                  |
         | ...              |
@@ -133,6 +134,7 @@ The memory map:
 0x7C00  +------------------+ <--- Start of the code (ORG 0x7C00)
         | ...              |
 0x0000  +------------------+
+```
 
 ---
 
